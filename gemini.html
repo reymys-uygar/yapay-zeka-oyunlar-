@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>AETHER DRIFT - Quantum Network</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Rajdhani:wght@300;500&display=swap");
+
+      :root {
+        --bg-color: #050509;
+        --glass: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --accent: #00f0ff;
+        --accent-2: #ff0055;
+      }
+
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: var(--bg-color);
+        color: white;
+        font-family: "Rajdhani", sans-serif;
+        user-select: none;
+      }
+
+      canvas {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+
+      /* Ana UI Katmanı */
+      #ui-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+        pointer-events: none; /* Oyun içindeyken tıklamalar canvasa gitsin */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 2rem;
+        box-sizing: border-box;
+      }
+
+      .hud-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+
+      .label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.2rem;
+        opacity: 0.6;
+      }
+
+      #score-display {
+        font-family: "Syncopate", sans-serif;
+        font-size: 2.5rem;
+        font-weight: 700;
+        text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+      }
+
+      /* Ekranlar (Menü ve Game Over) */
+      .screen {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(10, 10, 20, 0.9);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        padding: 3rem;
+        text-align: center;
+        border-radius: 8px;
+        z-index: 100; /* Butonların çalışması için en üstte olmalı */
+        transition: all 0.4s ease;
+        width: 300px;
+      }
+
+      .screen.hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, -40%) scale(0.9);
+      }
+
+      h1 {
+        font-family: "Syncopate", sans-serif;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        color: var(--accent);
+      }
+
+      .btn {
+        background: white;
+        border: none;
+        color: black;
+        padding: 1rem 2rem;
+        font-family: "Syncopate", sans-serif;
+        font-size: 0.9rem;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        pointer-events: auto; /* Tıklanabilirliği garanti et */
+      }
+
+      .btn:hover {
+        box-shadow: 0 0 20px var(--accent);
+        transform: translateY(-2px);
+      }
+
+      #tutorial {
+        position: absolute;
+        bottom: 15%;
+        width: 100%;
+        text-align: center;
+        letter-spacing: 4px;
+        opacity: 0;
+        transition: opacity 0.5s;
+      }
+
+      .scanlines {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(
+          to bottom,
+          transparent,
+          rgba(0, 0, 0, 0.1) 50%
+        );
+        background-size: 100% 4px;
+        z-index: 5;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="scanlines"></div>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+      <div class="hud-top">
+        <div class="score-container">
+          <div class="label">Sync Rate</div>
+          <div id="score-display">0000</div>
+        </div>
+      </div>
+      <div id="tutorial">RELEASE ORBIT TO DRIFT</div>
+    </div>
+
+    <div id="start-screen" class="screen">
+      <h1>AETHER DRIFT</h1>
+      <p>Orbit the nodes.<br />Time your release.</p>
+      <button class="btn" id="start-btn">Initialize</button>
+    </div>
+
+    <div id="game-over-screen" class="screen hidden">
+      <h1>SIGNAL LOST</h1>
+      <p>Score: <span id="final-score">0</span></p>
+      <button class="btn" id="restart-btn">Re-Sequence</button>
+    </div>
+
+    <script>
+      const AudioEngine = {
+        ctx: null,
+        init() {
+          if (this.ctx) return;
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        },
+        play(freq, type, duration, vol) {
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(
+            0.01,
+            this.ctx.currentTime + duration,
+          );
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        },
+      };
+
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      let width,
+        height,
+        player,
+        nodes,
+        particles,
+        gameActive = false,
+        score = 0,
+        cameraY = 0;
+
+      class Node {
+        constructor(x, y, isStart = false) {
+          this.x = x;
+          this.y = y;
+          this.r = isStart ? 25 : 15 + Math.random() * 15;
+          this.visited = isStart;
+          this.pulse = 0;
+        }
+        draw() {
+          this.pulse += 0.05;
+          const s = this.r + Math.sin(this.pulse) * 3;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y - cameraY, s + 40, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(0, 240, 255, 0.05)";
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(this.x, this.y - cameraY, this.r, 0, Math.PI * 2);
+          ctx.fillStyle = this.visited ? "#fff" : "#00f0ff";
+          ctx.fill();
+        }
+      }
+
+      class Player {
+        constructor(node) {
+          this.node = node;
+          this.angle = 0;
+          this.dist = 100;
+          this.x = node.x + this.dist;
+          this.y = node.y;
+          this.state = "orbit";
+          this.vel = { x: 0, y: 0 };
+        }
+        update() {
+          if (this.state === "orbit") {
+            this.angle += 0.06;
+            this.x = this.node.x + Math.cos(this.angle) * this.dist;
+            this.y = this.node.y + Math.sin(this.angle) * this.dist;
+          } else {
+            this.x += this.vel.x;
+            this.y += this.vel.y;
+          }
+        }
+        draw() {
+          ctx.fillStyle = "#fff";
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = "#00f0ff";
+          ctx.beginPath();
+          ctx.arc(this.x, this.y - cameraY, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      }
+
+      function initGame() {
+        AudioEngine.init();
+        if (AudioEngine.ctx.state === "suspended") AudioEngine.ctx.resume();
+
+        nodes = [new Node(width / 2, height - 200, true)];
+        player = new Player(nodes[0]);
+        particles = [];
+        score = 0;
+        cameraY = 0;
+        gameActive = true;
+
+        spawnNodes();
+
+        document.getElementById("start-screen").classList.add("hidden");
+        document.getElementById("game-over-screen").classList.add("hidden");
+        document.getElementById("score-display").innerText = "0000";
+        document.getElementById("tutorial").style.opacity = 1;
+
+        requestAnimationFrame(loop);
+      }
+
+      function spawnNodes() {
+        while (nodes.length < 15) {
+          const last = nodes[nodes.length - 1];
+          nodes.push(
+            new Node(
+              50 + Math.random() * (width - 100),
+              last.y - 250 - Math.random() * 150,
+            ),
+          );
+        }
+      }
+
+      function loop() {
+        if (!gameActive) return;
+
+        // Background
+        ctx.fillStyle = "#050509";
+        ctx.fillRect(0, 0, width, height);
+
+        // Camera
+        const targetY = player.y - height * 0.7;
+        cameraY += (targetY - cameraY) * 0.1;
+
+        player.update();
+
+        // Check Collision
+        if (player.state === "drift") {
+          nodes.forEach((node) => {
+            const d = Math.hypot(player.x - node.x, player.y - node.y);
+            if (d < 100 && node !== player.node) {
+              player.state = "orbit";
+              player.node = node;
+              player.angle = Math.atan2(player.y - node.y, player.x - node.x);
+              if (!node.visited) {
+                node.visited = true;
+                score += 100;
+                document.getElementById("score-display").innerText = score
+                  .toString()
+                  .padStart(4, "0");
+                AudioEngine.play(440, "sine", 0.2, 0.1);
+              }
+            }
+          });
+
+          if (player.y - cameraY > height || player.x < 0 || player.x > width) {
+            gameActive = false;
+            document.getElementById("final-score").innerText = score;
+            document
+              .getElementById("game-over-screen")
+              .classList.remove("hidden");
+            AudioEngine.play(100, "sawtooth", 0.5, 0.2);
+          }
+        }
+
+        spawnNodes();
+        nodes.forEach((n) => n.draw());
+        player.draw();
+
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener("mousedown", () => {
+        if (gameActive && player.state === "orbit") {
+          player.state = "drift";
+          const speed = 12;
+          player.vel.x = -Math.sin(player.angle) * speed;
+          player.vel.y = Math.cos(player.angle) * speed;
+          document.getElementById("tutorial").style.opacity = 0;
+          AudioEngine.play(880, "sine", 0.1, 0.05);
+        }
+      });
+
+      window.addEventListener("resize", resize);
+      document.getElementById("start-btn").onclick = (e) => {
+        e.stopPropagation();
+        initGame();
+      };
+      document.getElementById("restart-btn").onclick = (e) => {
+        e.stopPropagation();
+        initGame();
+      };
+
+      resize();
+    </script>
+  </body>
+</html>

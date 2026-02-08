@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chromatic Cascade - Color Physics Puzzle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #f5f0e8 0%, #e8dcc8 100%);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 90vw;
+            max-width: 900px;
+            height: 90vh;
+            max-height: 700px;
+            background: #fffef9;
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            overflow: hidden;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .ui-panel {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        #topPanel {
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+        }
+
+        #targetPanel {
+            top: 100px;
+            left: 20px;
+            width: 200px;
+        }
+
+        #scorePanel {
+            top: 100px;
+            right: 20px;
+            width: 200px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #8b7355;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        #targetColor {
+            width: 100%;
+            height: 80px;
+            border-radius: 10px;
+            box-shadow: 
+                inset 0 2px 10px rgba(0, 0, 0, 0.1),
+                0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #targetColor::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 30%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), transparent);
+        }
+
+        #targetRGB {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+        }
+
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .score-label {
+            color: #8b7355;
+        }
+
+        .score-value {
+            font-weight: bold;
+            color: #5a4a3a;
+        }
+
+        #progressBar {
+            width: 100%;
+            height: 8px;
+            background: #e8dcc8;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        #progressFill {
+            height: 100%;
+            background: linear-gradient(90deg, #c9a87c, #8b7355);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+
+        #levelDisplay {
+            font-size: 24px;
+            font-weight: bold;
+            color: #5a4a3a;
+            letter-spacing: 1px;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            text-align: center;
+            color: #8b7355;
+            font-size: 14px;
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        .droplet-trail {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            filter: blur(3px);
+            opacity: 0.3;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.98);
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            display: none;
+        }
+
+        #gameOver h2 {
+            font-size: 36px;
+            color: #5a4a3a;
+            margin-bottom: 20px;
+        }
+
+        #finalScore {
+            font-size: 24px;
+            color: #8b7355;
+            margin-bottom: 30px;
+        }
+
+        #restartBtn {
+            background: linear-gradient(135deg, #c9a87c, #8b7355);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(139, 115, 85, 0.3);
+            transition: all 0.3s ease;
+            font-family: 'Georgia', serif;
+        }
+
+        #restartBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 115, 85, 0.4);
+        }
+
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: particleFloat 1s ease-out forwards;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        .combo-text {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            color: #c9a87c;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+            animation: comboFloat 1s ease-out forwards;
+        }
+
+        @keyframes comboFloat {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-50px) scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        #paletteHint {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="canvas"></canvas>
+        
+        <div id="topPanel" class="ui-panel">
+            <div id="levelDisplay">LEVEL 1</div>
+            <div style="display: flex; gap: 30px; align-items: center;">
+                <div class="score-item">
+                    <span class="score-label">TIME</span>
+                    <span class="score-value" id="timer">60</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="targetPanel" class="ui-panel">
+            <div class="panel-title">Target Color</div>
+            <div id="targetColor"></div>
+            <div id="targetRGB">RGB(?, ?, ?)</div>
+            <div id="paletteHint">Mix droplets to match!</div>
+        </div>
+
+        <div id="scorePanel" class="ui-panel">
+            <div class="panel-title">Score</div>
+            <div class="score-item">
+                <span class="score-label">Points</span>
+                <span class="score-value" id="score">0</span>
+            </div>
+            <div class="score-item">
+                <span class="score-label">Matches</span>
+                <span class="score-value" id="matches">0</span>
+            </div>
+            <div class="score-item">
+                <span class="score-label">Combo</span>
+                <span class="score-value" id="combo">0x</span>
+            </div>
+            <div id="progressBar">
+                <div id="progressFill"></div>
+            </div>
+        </div>
+
+        <div id="instructions">
+            Drag droplets together to mix colors • Match the target to score • Chain matches for combos!
+        </div>
+
+        <div id="gameOver">
+            <h2>Time's Up!</h2>
+            <div id="finalScore"></div>
+            <button id="restartBtn">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game state
+        const game = {
+            droplets: [],
+            score: 0,
+            matches: 0,
+            level: 1,
+            timeLeft: 60,
+            targetColor: null,
+            combo: 0,
+            lastMatchTime: 0,
+            running: true
+        };
+
+        // Primary colors for mixing
+        const primaryColors = [
+            { r: 255, g: 0, b: 0, name: 'Red' },
+            { r: 0, g: 0, b: 255, name: 'Blue' },
+            { r: 255, g: 255, b: 0, name: 'Yellow' },
+            { r: 0, g: 255, b: 0, name: 'Green' },
+            { r: 255, g: 0, b: 255, name: 'Magenta' },
+            { r: 0, g: 255, b: 255, name: 'Cyan' }
+        ];
+
+        // Droplet class
+        class Droplet {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = 0;
+                this.radius = 20 + Math.random() * 15;
+                this.color = color;
+                this.mass = this.radius;
+                this.isDragging = false;
+                this.opacity = 1;
+                this.wobble = Math.random() * Math.PI * 2;
+            }
+
+            update(dt) {
+                if (!this.isDragging) {
+                    this.vy += 0.3; // Gravity
+                    this.vx *= 0.99; // Friction
+                    this.vy *= 0.99;
+                    
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Bounce off walls
+                    if (this.x - this.radius < 0) {
+                        this.x = this.radius;
+                        this.vx *= -0.7;
+                    }
+                    if (this.x + this.radius > canvas.width) {
+                        this.x = canvas.width - this.radius;
+                        this.vx *= -0.7;
+                    }
+                    if (this.y + this.radius > canvas.height) {
+                        this.y = canvas.height - this.radius;
+                        this.vy *= -0.7;
+                        this.vx *= 0.95;
+                    }
+                }
+
+                this.wobble += 0.05;
+            }
+
+            draw() {
+                const wobbleAmount = Math.sin(this.wobble) * 2;
+                
+                // Shadow
+                ctx.save();
+                ctx.globalAlpha = 0.2 * this.opacity;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.ellipse(this.x + 5, this.y + 5, this.radius, this.radius * 0.9, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // Main droplet with gradient
+                const gradient = ctx.createRadialGradient(
+                    this.x - this.radius * 0.3, 
+                    this.y - this.radius * 0.3, 
+                    this.radius * 0.1,
+                    this.x, 
+                    this.y, 
+                    this.radius
+                );
+                
+                const lightColor = this.lightenColor(this.color, 40);
+                gradient.addColorStop(0, `rgba(${lightColor.r}, ${lightColor.g}, ${lightColor.b}, ${this.opacity})`);
+                gradient.addColorStop(0.7, `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.opacity})`);
+                gradient.addColorStop(1, this.darkenColor(this.color, 20));
+
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y + wobbleAmount, this.radius, this.radius + wobbleAmount * 0.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Highlight
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.beginPath();
+                ctx.ellipse(this.x - this.radius * 0.3, this.y - this.radius * 0.3, this.radius * 0.4, this.radius * 0.3, -0.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            lightenColor(color, amount) {
+                return {
+                    r: Math.min(255, color.r + amount),
+                    g: Math.min(255, color.g + amount),
+                    b: Math.min(255, color.b + amount)
+                };
+            }
+
+            darkenColor(color, amount) {
+                return `rgba(${Math.max(0, color.r - amount)}, ${Math.max(0, color.g - amount)}, ${Math.max(0, color.b - amount)}, ${this.opacity})`;
+            }
+
+            contains(x, y) {
+                const dx = x - this.x;
+                const dy = y - this.y;
+                return dx * dx + dy * dy <= this.radius * this.radius;
+            }
+        }
+
+        // Color mixing function (subtractive mixing simulation)
+        function mixColors(color1, color2) {
+            return {
+                r: Math.round((color1.r + color2.r) / 2),
+                g: Math.round((color1.g + color2.g) / 2),
+                b: Math.round((color1.b + color2.b) / 2)
+            };
+        }
+
+        // Generate target color
+        function generateTargetColor() {
+            const numMixes = Math.min(Math.floor(game.level / 2) + 1, 3);
+            let color = primaryColors[Math.floor(Math.random() * primaryColors.length)];
+            
+            for (let i = 0; i < numMixes; i++) {
+                const color2 = primaryColors[Math.floor(Math.random() * primaryColors.length)];
+                color = mixColors(color, color2);
+            }
+            
+            // Add some variation
+            color.r = Math.max(0, Math.min(255, color.r + (Math.random() - 0.5) * 40));
+            color.g = Math.max(0, Math.min(255, color.g + (Math.random() - 0.5) * 40));
+            color.b = Math.max(0, Math.min(255, color.b + (Math.random() - 0.5) * 40));
+            
+            game.targetColor = color;
+            document.getElementById('targetColor').style.background = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            document.getElementById('targetRGB').textContent = `RGB(${color.r}, ${color.g}, ${color.b})`;
+        }
+
+        // Spawn droplet
+        function spawnDroplet() {
+            const x = Math.random() * (canvas.width - 100) + 50;
+            const y = -50;
+            const color = primaryColors[Math.floor(Math.random() * primaryColors.length)];
+            game.droplets.push(new Droplet(x, y, color));
+        }
+
+        // Check color match
+        function checkColorMatch(color1, color2) {
+            const threshold = 40 - (game.level * 2); // Gets harder each level
+            const dr = Math.abs(color1.r - color2.r);
+            const dg = Math.abs(color1.g - color2.g);
+            const db = Math.abs(color1.b - color2.b);
+            return dr + dg + db < threshold;
+        }
+
+        // Merge droplets
+        function mergeDroplets(d1, d2) {
+            const newColor = mixColors(d1.color, d2.color);
+            const newRadius = Math.sqrt(d1.radius * d1.radius + d2.radius * d2.radius);
+            const newX = (d1.x * d1.mass + d2.x * d2.mass) / (d1.mass + d2.mass);
+            const newY = (d1.y * d1.mass + d2.y * d2.mass) / (d1.mass + d2.mass);
+            
+            const newDroplet = new Droplet(newX, newY, newColor);
+            newDroplet.radius = Math.min(newRadius, 60);
+            newDroplet.vx = (d1.vx * d1.mass + d2.vx * d2.mass) / (d1.mass + d2.mass);
+            newDroplet.vy = (d1.vy * d1.mass + d2.vy * d2.mass) / (d1.mass + d2.mass);
+            
+            // Check if it matches target
+            if (checkColorMatch(newColor, game.targetColor)) {
+                const now = Date.now();
+                if (now - game.lastMatchTime < 2000) {
+                    game.combo++;
+                } else {
+                    game.combo = 1;
+                }
+                game.lastMatchTime = now;
+                
+                const points = 100 * game.combo * game.level;
+                game.score += points;
+                game.matches++;
+                
+                // Show combo text
+                showComboText(newX, newY, `+${points}`, game.combo > 1 ? `${game.combo}x COMBO!` : 'MATCH!');
+                
+                // Particles
+                createParticles(newX, newY, newColor);
+                
+                // Remove the droplet
+                newDroplet.opacity = 0;
+                setTimeout(() => {
+                    const index = game.droplets.indexOf(newDroplet);
+                    if (index > -1) game.droplets.splice(index, 1);
+                }, 100);
+                
+                // Generate new target
+                generateTargetColor();
+                
+                // Update UI
+                updateUI();
+            }
+            
+            return newDroplet;
+        }
+
+        // Create particles
+        function createParticles(x, y, color) {
+            const container = document.getElementById('gameContainer');
+            for (let i = 0; i < 12; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.width = '8px';
+                particle.style.height = '8px';
+                particle.style.background = `rgb(${color.r}, ${color.g}, ${color.b})`;
+                
+                const angle = (Math.PI * 2 * i) / 12;
+                const distance = 50 + Math.random() * 50;
+                particle.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+                particle.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+                
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1000);
+            }
+        }
+
+        // Show combo text
+        function showComboText(x, y, points, text) {
+            const container = document.getElementById('gameContainer');
+            const comboEl = document.createElement('div');
+            comboEl.className = 'combo-text';
+            comboEl.textContent = text;
+            comboEl.style.left = x + 'px';
+            comboEl.style.top = y + 'px';
+            container.appendChild(comboEl);
+            setTimeout(() => comboEl.remove(), 1000);
+        }
+
+        // Update UI
+        function updateUI() {
+            document.getElementById('score').textContent = game.score;
+            document.getElementById('matches').textContent = game.matches;
+            document.getElementById('combo').textContent = game.combo + 'x';
+            document.getElementById('levelDisplay').textContent = `LEVEL ${game.level}`;
+            
+            const progress = (game.matches % 5) / 5 * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+
+        // Mouse/touch handling
+        let draggedDroplet = null;
+        let mouseX = 0;
+        let mouseY = 0;
+
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            mouseX = touch.clientX - rect.left;
+            mouseY = touch.clientY - rect.top;
+            handleStart(e);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            mouseX = touch.clientX - rect.left;
+            mouseY = touch.clientY - rect.top;
+            handleMove(e);
+        });
+        canvas.addEventListener('touchend', handleEnd);
+
+        function handleStart(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.type === 'mousedown') {
+                mouseX = e.clientX - rect.left;
+                mouseY = e.clientY - rect.top;
+            }
+            
+            for (let i = game.droplets.length - 1; i >= 0; i--) {
+                if (game.droplets[i].contains(mouseX, mouseY)) {
+                    draggedDroplet = game.droplets[i];
+                    draggedDroplet.isDragging = true;
+                    break;
+                }
+            }
+        }
+
+        function handleMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.type === 'mousemove') {
+                mouseX = e.clientX - rect.left;
+                mouseY = e.clientY - rect.top;
+            }
+            
+            if (draggedDroplet) {
+                draggedDroplet.x = mouseX;
+                draggedDroplet.y = mouseY;
+                draggedDroplet.vx = 0;
+                draggedDroplet.vy = 0;
+            }
+        }
+
+        function handleEnd(e) {
+            if (draggedDroplet) {
+                draggedDroplet.isDragging = false;
+                
+                // Check for collisions with other droplets
+                for (let i = 0; i < game.droplets.length; i++) {
+                    const other = game.droplets[i];
+                    if (other !== draggedDroplet) {
+                        const dx = draggedDroplet.x - other.x;
+                        const dy = draggedDroplet.y - other.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < draggedDroplet.radius + other.radius) {
+                            // Merge!
+                            const newDroplet = mergeDroplets(draggedDroplet, other);
+                            game.droplets = game.droplets.filter(d => d !== draggedDroplet && d !== other);
+                            game.droplets.push(newDroplet);
+                            break;
+                        }
+                    }
+                }
+                
+                draggedDroplet = null;
+            }
+        }
+
+        // Game loop
+        let lastTime = Date.now();
+        let dropletSpawnTimer = 0;
+        let gameTimer = 0;
+
+        function gameLoop() {
+            if (!game.running) return;
+            
+            const now = Date.now();
+            const dt = (now - lastTime) / 16.67; // Normalize to 60fps
+            lastTime = now;
+
+            // Clear canvas with subtle gradient
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGradient.addColorStop(0, '#fffef9');
+            bgGradient.addColorStop(1, '#faf8f3');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update and draw droplets
+            game.droplets.forEach(droplet => {
+                droplet.update(dt);
+                droplet.draw();
+            });
+
+            // Spawn new droplets
+            dropletSpawnTimer += dt;
+            const spawnRate = Math.max(60, 120 - game.level * 5);
+            if (dropletSpawnTimer > spawnRate && game.droplets.length < 15) {
+                spawnDroplet();
+                dropletSpawnTimer = 0;
+            }
+
+            // Update timer
+            gameTimer += dt;
+            if (gameTimer > 60) {
+                game.timeLeft--;
+                document.getElementById('timer').textContent = game.timeLeft;
+                gameTimer = 0;
+                
+                if (game.timeLeft <= 0) {
+                    endGame();
+                    return;
+                }
+            }
+
+            // Level up
+            if (game.matches > 0 && game.matches % 5 === 0) {
+                const newLevel = Math.floor(game.matches / 5) + 1;
+                if (newLevel > game.level) {
+                    game.level = newLevel;
+                    game.timeLeft += 15; // Bonus time
+                    updateUI();
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            game.running = false;
+            document.getElementById('finalScore').innerHTML = `
+                <div style="margin: 10px 0;">Final Score: <strong>${game.score}</strong></div>
+                <div style="margin: 10px 0;">Matches: <strong>${game.matches}</strong></div>
+                <div style="margin: 10px 0;">Level Reached: <strong>${game.level}</strong></div>
+            `;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function restartGame() {
+            game.droplets = [];
+            game.score = 0;
+            game.matches = 0;
+            game.level = 1;
+            game.timeLeft = 60;
+            game.combo = 0;
+            game.running = true;
+            
+            document.getElementById('gameOver').style.display = 'none';
+            generateTargetColor();
+            updateUI();
+            
+            lastTime = Date.now();
+            gameLoop();
+        }
+
+        document.getElementById('restartBtn').addEventListener('click', restartGame);
+
+        // Initialize
+        generateTargetColor();
+        updateUI();
+        
+        // Spawn initial droplets
+        for (let i = 0; i < 4; i++) {
+            setTimeout(() => spawnDroplet(), i * 500);
+        }
+        
+        gameLoop();
+    </script>
+</body>
+</html>
