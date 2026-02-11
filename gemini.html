@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>AETHER DRIFT: DUEL</title>
+<title>AETHER DRIFT: JANDIX FINAL</title>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;700&family=Syncopate:wght@700&display=swap');
 
@@ -25,17 +24,19 @@
         background-color: var(--bg-color);
         color: white;
         font-family: var(--ui-font);
-        touch-action: none;
+        touch-action: none; /* Genel kaydırmayı engelle */
         user-select: none;
         -webkit-user-select: none;
+        transition: background-color 2s ease; /* Biyom geçişi yumuşak olsun */
     }
 
     /* BIOMES */
-    body.biome-void { background-color: #1a0525; }
-    body.biome-inferno { background-color: #2b0505; }
-    body.biome-cyber { background-color: #00151a; }
+    body.biome-void { background-color: #150020; } /* Morumsu */
+    body.biome-inferno { background-color: #250000; } /* Kırmızımsı */
+    body.biome-cyber { background-color: #001015; } /* Yeşilimsi */
 
-    canvas { display: block; }
+    /* CANVAS */
+    canvas { display: block; width: 100%; height: 100%; }
 
     /* UI LAYER */
     #ui-layer {
@@ -45,52 +46,36 @@
     
     .hud { display: flex; justify-content: space-between; align-items: flex-start; }
     .score-wrap { text-align: left; pointer-events: none; }
-    .big-score { font-family: var(--title-font); font-size: 2.2rem; font-weight: bold; text-shadow: 0 0 15px var(--primary); }
+    .big-score { font-family: var(--title-font); font-size: 2.5rem; font-weight: bold; text-shadow: 0 0 15px var(--primary); }
     .sub-text { font-size: 0.9rem; color: #888; margin-top: 5px; font-weight: bold; }
     .coin-disp { color: var(--gold); margin-top: 5px; font-size: 1.2rem; text-shadow: 0 0 10px var(--gold); }
-
-    /* DUEL HUD (2P) */
-    .duel-hud {
-        position: absolute; width: 100%; height: 100%; top:0; left:0; pointer-events: none; display: none;
-    }
-    .p1-score { position: absolute; top: 20px; left: 20px; color: var(--primary); font-size: 1.5rem; font-weight: bold; }
-    .p2-score { position: absolute; bottom: 20px; right: 20px; color: var(--secondary); font-size: 1.5rem; font-weight: bold; }
-    .separator {
-        position: absolute; top: 50%; left: 0; width: 100%; height: 2px;
-        background: #fff; opacity: 0.5; z-index: 5;
-    }
 
     /* PAUSE BUTTON */
     #pauseBtn {
         pointer-events: auto;
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.2);
-        color: white;
-        font-family: var(--title-font);
-        font-weight: bold;
-        padding: 10px 15px;
-        border-radius: 5px;
-        backdrop-filter: blur(5px);
-        cursor: pointer;
-        display: none;
+        color: white; font-family: var(--title-font); font-weight: bold;
+        padding: 10px 15px; border-radius: 8px;
+        backdrop-filter: blur(5px); cursor: pointer;
+        display: none; margin-bottom: 10px;
     }
 
     /* SCREENS */
     .screen {
         position: absolute; top: 50%; left: 50%;
         transform: translate(-50%, -50%);
-        background: rgba(12, 12, 20, 0.95);
+        background: rgba(8, 8, 15, 0.96);
         border: 1px solid rgba(255,255,255,0.1);
-        box-shadow: 0 0 60px rgba(0,0,0,0.8);
+        box-shadow: 0 0 50px rgba(0,0,0,0.9);
         padding: 25px; width: 90%; max-width: 400px;
         text-align: center; border-radius: 20px;
         pointer-events: auto;
-        transition: opacity 0.3s;
         display: flex; flex-direction: column; gap: 15px;
-        z-index: 100;
-        backdrop-filter: blur(15px);
+        z-index: 100; backdrop-filter: blur(15px);
+        transition: opacity 0.3s;
     }
-    .hidden { opacity: 0; pointer-events: none; transform: translate(-50%, -60%); display: none !important; }
+    .hidden { opacity: 0; pointer-events: none; transform: translate(-50%, -60%) scale(0.9); display: none !important; }
 
     h1 { margin: 0; color: var(--primary); font-family: var(--title-font); font-size: 2rem; text-shadow: 0 0 20px rgba(0,240,255,0.4); }
     h2 { margin: 0; color: var(--secondary); font-family: 'Press Start 2P', cursive; font-size: 1.5rem; line-height: 1.5; }
@@ -101,24 +86,26 @@
         font-family: var(--title-font); font-weight: bold; font-size: 1.1rem;
         cursor: pointer; clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
         text-transform: uppercase; letter-spacing: 2px;
-        outline: none;
     }
     .btn:active { transform: scale(0.96); filter: brightness(1.2); }
     .btn-sec { background: transparent; color: white; border: 1px solid #444; }
-    .btn-duel { background: linear-gradient(90deg, #ff0055, #ff9900); color: white; }
     .btn-share { background: var(--jandix); color: #000; }
 
-    /* GARAGE */
+    /* GARAGE (Scroll Fix) */
     .garage-grid { 
         display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; 
-        max-height: 300px; overflow-y: auto; padding-right: 5px;
+        max-height: 350px; 
+        overflow-y: auto; /* Kaydırmaya izin ver */
+        padding-right: 5px;
+        touch-action: pan-y; /* Dikey kaydırmaya izin ver */
     }
     .ship-card { 
         background: rgba(255,255,255,0.03); border: 1px solid #333; padding: 15px; 
         border-radius: 10px; cursor: pointer; transition: 0.2s;
         display: flex; flex-direction: column; align-items: center;
+        position: relative;
     }
-    .ship-card.selected { border-color: var(--jandix); background: rgba(46, 204, 113, 0.05); box-shadow: inset 0 0 20px rgba(46,204,113,0.1); }
+    .ship-card.selected { border-color: var(--jandix); background: rgba(46, 204, 113, 0.05); }
     .ship-icon { width: 40px; height: 40px; margin-bottom: 10px; display: block; border-radius: 50%; }
     .ship-name { font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; color: #eee; }
 
@@ -133,13 +120,23 @@
         font-family: var(--title-font); font-size: 2.5rem; color: var(--jandix);
         text-shadow: 0 0 30px var(--jandix); letter-spacing: 5px; animation: pulseText 2s infinite; text-align: center;
     }
+    
+    /* TOAST */
+    #toast {
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        background: #333; color: #fff; padding: 10px 20px; border-radius: 20px;
+        opacity: 0; transition: opacity 0.5s; pointer-events: none; z-index: 200; font-weight: bold;
+    }
+
     @keyframes pulseText { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     .hyper-mode canvas { filter: invert(1) hue-rotate(180deg); }
+    .danger-text { color: var(--secondary); font-size: 0.8rem; letter-spacing: 2px; animation: pulseText 0.5s infinite; }
 </style>
 </head>
 <body>
 
 <div id="splash"><div class="splash-text">JANDIX<br>GAMES</div></div>
+<div id="toast">Link Copied!</div>
 
 <canvas id="canvas"></canvas>
 
@@ -147,27 +144,22 @@
     <div class="hud">
         <div class="score-wrap">
             <button id="pauseBtn" onclick="togglePause()">II</button>
-            <div id="scoreVal" class="big-score" style="margin-top:10px;">0</div>
-            <div id="comboText" style="color:var(--secondary); opacity:0; font-weight:800; font-style:italic;">COMBO x1</div>
+            <div id="scoreVal" class="big-score">0</div>
+            <div id="comboText" style="color:var(--secondary); opacity:0; font-weight:800; font-style:italic; transition:0.2s;">COMBO x1</div>
         </div>
         <div class="score-wrap" style="text-align:right;">
             <div id="coinVal" class="coin-disp"><span>🪙</span> <span id="coinNum">0</span></div>
             <div id="bestVal" class="sub-text">BEST: 0</div>
+            <div id="speedWarning" class="danger-text" style="opacity:0; margin-top:5px;">SPEED UP!</div>
         </div>
     </div>
 </div>
 
-<div id="duel-layer" class="duel-hud">
-    <div class="separator"></div>
-    <div class="p1-score">P1: <span id="dScore1">0</span>m</div>
-    <div class="p2-score">P2: <span id="dScore2">0</span>m</div>
-</div>
-
 <div id="menuScreen" class="screen hidden">
     <h1>AETHER DRIFT</h1>
-    <button class="btn" onclick="startGame('solo')">SOLO MISSION</button>
-    <button class="btn btn-duel" onclick="startGame('duel')">VS DUEL (2P)</button>
-    <button class="btn btn-sec" onclick="openGarage()">GARAGE</button>
+    <p style="color:#aaa; font-size:0.9rem;">JANDIX STUDIO</p>
+    <button class="btn" onclick="startGame()">MISSION START</button>
+    <button class="btn btn-sec" onclick="openGarage()">GARAGE & SKINS</button>
 </div>
 
 <div id="pauseScreen" class="screen hidden">
@@ -184,261 +176,71 @@
 </div>
 
 <div id="overScreen" class="screen hidden">
-    <h2 id="overTitle">GAME OVER</h2>
-    <p id="overDesc">SCORE: 0</p>
-    <button class="btn" onclick="restartLastMode()">RETRY</button>
-    <button class="btn btn-share" onclick="shareScore()">SHARE</button>
+    <h2>SYSTEM<br>FAILURE</h2>
+    <p>ALTITUDE: <span id="finalScore" style="color:var(--primary)">0</span>m</p>
+    <p>EARNED: <span id="finalCoins" style="color:gold">0</span> Coins</p>
+    <button class="btn" onclick="startGame()">RETRY</button>
+    <button class="btn btn-share" onclick="shareScore()">CHALLENGE FRIENDS</button>
     <button class="btn btn-sec" onclick="showMenu()">MENU</button>
 </div>
 
 <script>
+// --- CONFIGURATION ---
 const CONFIG = {
     baseWidth: 400,
     ships: [
         { id: 'starter', name: 'Scout Mark I', cost: 0, color: '#00f0ff', speed: 1.0, lives: 1, type: 'basic' },
         { id: 'tank', name: 'Heavy Titan', cost: 250, color: '#e74c3c', speed: 0.85, lives: 2, type: 'tank' },
         { id: 'neon', name: 'Neon Prime', cost: 600, color: '#2ecc71', speed: 1.1, lives: 1, type: 'speed' },
-        { id: 'phantom', name: 'Phantom X', cost: 1200, color: '#ffffff', speed: 1.2, lives: 1, type: 'ghost' },
+        { id: 'phantom', name: 'Phantom X', cost: 1200, color: '#111', speed: 1.2, lives: 1, type: 'ghost' }, // Dark but outlined
         { id: 'glitch', name: 'Cyber Glitch', cost: 2500, color: '#bd00ff', speed: 1.3, lives: 1, type: 'rainbow' },
         { id: 'gold', name: 'Midas Touch', cost: 5000, color: '#f1c40f', speed: 1.0, lives: 3, type: 'gold' }
     ]
 };
 
-let gameMode = 'solo'; // 'solo' or 'duel'
+// --- GAME STATE ---
 let state = {
+    score: 0,
+    highScore: parseInt(localStorage.getItem('jx_best') || 0),
     coins: parseInt(localStorage.getItem('jx_coins') || 0),
     inventory: JSON.parse(localStorage.getItem('jx_inv') || '["starter"]'),
     equipped: localStorage.getItem('jx_equip') || 'starter',
-    highScore: parseInt(localStorage.getItem('jx_best') || 0),
+    active: false,
     paused: false,
+    combo: 0,
+    hyperMode: false,
+    timeScale: 1,
+    cameraY: 0,
+    shake: 0,
+    difficulty: 0,
     animId: null
 };
 
-// Instance Class for each Player/World
-class GameInstance {
-    constructor(id, yOffset, height, isBot = false) {
-        this.id = id;
-        this.yOffset = yOffset; // Screen rendering offset
-        this.height = height;   // Screen height portion
-        this.active = true;
-        this.score = 0;
-        this.combo = 0;
-        this.cameraY = 0;
-        this.shake = 0;
-        this.nodes = [];
-        this.player = null;
-        
-        // Ship setup
-        const shipData = CONFIG.ships.find(s => s.id === state.equipped) || CONFIG.ships[0];
-        // In Duel, P2 gets Red Ship automatically
-        this.ship = (id === 2) ? { ...shipData, color: '#ff0055', name: 'Red Rival' } : shipData;
-        
-        this.init();
-    }
+// --- AUDIO ENGINE ---
+const AudioEngine = {
+    ctx: null,
+    init() { if(!this.ctx) this.ctx = new (window.AudioContext||window.webkitAudioContext)(); },
+    resume() { if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+    play(freq, type, dur, vol=0.1) {
+        if(!this.ctx || state.paused) return;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = type; o.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        g.gain.setValueAtTime(vol, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime+dur);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(); o.stop(this.ctx.currentTime+dur);
+    },
+    crash() { this.play(100, 'sawtooth', 0.5, 0.3); },
+    collect() { this.play(600 + (state.combo*100), 'sine', 0.1, 0.1); },
+    coin() { this.play(1200, 'square', 0.1, 0.1); },
+    launch() { this.play(200, 'triangle', 0.2, 0.1); }
+};
 
-    init() {
-        this.nodes = [new Node(this.height - 150, true, this.height)];
-        this.spawnNodes();
-        this.player = new Player(this.nodes[0], this.ship);
-    }
-
-    spawnNodes() {
-        while (this.nodes[this.nodes.length-1].y > this.cameraY - this.height) { 
-            const last = this.nodes[this.nodes.length-1];
-            const gap = (140 + Math.random() * 80) * scale;
-            this.nodes.push(new Node(last.y - gap, false, this.height));
-        }
-        if(this.nodes.length > 20 && this.nodes[0].y > this.cameraY + this.height + 200) this.nodes.shift();
-    }
-
-    update() {
-        if(!this.active) return;
-        
-        this.player.update(this.cameraY);
-        
-        // Camera Follow
-        const targetY = this.player.y - this.height * 0.65;
-        this.cameraY += (targetY - this.cameraY) * 0.1;
-
-        // Collision & Logic
-        if(this.player.state === 'drift') {
-            let hit = false;
-            this.nodes.forEach(node => {
-                const dx = this.player.x - node.x;
-                const dy = this.player.y - node.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                
-                if (dist < node.r + 35*scale && node !== this.player.node) {
-                    hit = true;
-                    this.player.attach(node);
-                    
-                    if(!node.visited) {
-                        node.visited = true;
-                        this.combo++;
-                        this.score += (100 + (this.combo * 10));
-                        if(node.type === 'gold' && this.id === 1) { state.coins += 50; } // Only P1 earns coins
-                        AudioEngine.collect();
-                    }
-                    this.spawnNodes();
-                }
-            });
-
-            // Bounds Check
-            if(!hit && (this.player.x < -20 || this.player.x > W+20 || this.player.y - this.cameraY > this.height + 100)) {
-                this.die();
-            }
-        }
-    }
-
-    die() {
-        this.player.lives--;
-        if(this.player.lives <= 0) {
-            this.active = false;
-            AudioEngine.crash();
-            if(gameMode === 'solo') gameOverSolo(this.score);
-            else checkDuelWin();
-        } else {
-            this.player.vel.y = -15 * scale;
-            this.shake = 20;
-            AudioEngine.crash();
-        }
-    }
-
-    draw(ctx) {
-        ctx.save();
-        // Clip to viewport area
-        ctx.beginPath();
-        ctx.rect(0, this.yOffset, W, this.height);
-        ctx.clip();
-        
-        ctx.translate(0, this.yOffset); // Move coordinate system
-        
-        // Background for Duel distinction
-        if(gameMode === 'duel') {
-            ctx.fillStyle = this.id === 1 ? '#001015' : '#150005';
-            ctx.fillRect(0, 0, W, this.height);
-        }
-
-        // Shake
-        let sx = 0, sy = 0;
-        if(this.shake > 0) {
-            sx = (Math.random()-0.5)*this.shake;
-            sy = (Math.random()-0.5)*this.shake;
-            this.shake *= 0.9;
-        }
-        ctx.translate(sx, sy);
-
-        // Draw Nodes
-        this.nodes.forEach(n => { 
-            if(n.y - this.cameraY < this.height + 100 && n.y - this.cameraY > -this.height) 
-                n.draw(ctx, this.cameraY); 
-        });
-
-        // Draw Player
-        this.player.draw(ctx, this.cameraY);
-
-        ctx.restore();
-    }
-}
-
-// SHARED CLASSES
-class Node {
-    constructor(y, isStart, h) {
-        this.y = y;
-        this.x = (Math.random() * (W - 100*scale)) + 50*scale;
-        if(isStart) this.x = W/2;
-        this.r = (isStart ? 30 : 22 + Math.random() * 15) * scale;
-        this.visited = isStart;
-        this.pulse = 0;
-        this.type = (!isStart && Math.random() < 0.1) ? 'gold' : 'normal';
-    }
-    draw(ctx, camY) {
-        this.pulse += 0.05;
-        let color = this.type === 'gold' ? '#f1c40f' : '#00f0ff';
-        ctx.strokeStyle = color;
-        ctx.shadowBlur = 10; ctx.shadowColor = color;
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(this.x, this.y - camY, this.r, 0, Math.PI*2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(this.x, this.y - camY, this.r * 0.3, 0, Math.PI*2);
-        ctx.fillStyle = this.visited ? '#fff' : color;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-    }
-}
-
-class Player {
-    constructor(node, ship) {
-        this.node = node;
-        this.ship = ship;
-        this.lives = ship.lives;
-        this.x = node.x; this.y = node.y;
-        this.angle = 0;
-        this.dist = 85 * scale;
-        this.state = 'orbit';
-        this.vel = {x:0, y:0};
-        this.trail = [];
-    }
-    attach(node) {
-        this.state = 'orbit';
-        this.node = node;
-        this.angle = Math.atan2(this.y - node.y, this.x - node.x); // Fix attach angle
-    }
-    update(camY) {
-        this.trail.push({x:this.x, y:this.y, alpha:1});
-        if(this.trail.length > 10) this.trail.shift();
-
-        if (this.state === 'orbit') {
-            let rotationSpeed = 0.05 * this.ship.speed;
-            this.angle += rotationSpeed;
-            this.x = this.node.x + Math.cos(this.angle) * this.dist;
-            this.y = this.node.y + Math.sin(this.angle) * this.dist;
-        } else {
-            this.x += this.vel.x;
-            this.y += this.vel.y;
-            this.vel.y += 0.15 * scale; // Gravity
-        }
-    }
-    draw(ctx, camY) {
-        // Trail
-        this.trail.forEach(t => {
-            t.alpha -= 0.1;
-            ctx.fillStyle = `rgba(255,255,255,${Math.max(0,t.alpha)})`;
-            ctx.fillRect(t.x, t.y - camY, 3*scale, 3*scale);
-        });
-        
-        ctx.save();
-        ctx.translate(this.x, this.y - camY);
-        ctx.rotate(this.state === 'drift' ? Math.atan2(this.vel.y, this.vel.x) : this.angle + Math.PI/2);
-        
-        ctx.fillStyle = this.ship.color;
-        
-        // Phantom Glow
-        if(this.ship.type === 'ghost') {
-            ctx.shadowBlur = 0; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
-        } else {
-            ctx.shadowBlur = 15; ctx.shadowColor = this.ship.color;
-        }
-        
-        ctx.beginPath();
-        ctx.moveTo(12*scale, 0); ctx.lineTo(-10*scale, 8*scale); ctx.lineTo(-10*scale, -8*scale); ctx.fill();
-        if(this.ship.type === 'ghost') ctx.stroke();
-        ctx.restore();
-    }
-    launch() {
-        if(this.state !== 'orbit') return;
-        this.state = 'drift';
-        const speed = 18 * this.ship.speed * scale;
-        this.vel.x = -Math.sin(this.angle) * speed;
-        this.vel.y = Math.cos(this.angle) * speed;
-        AudioEngine.launch();
-    }
-}
-
-// --- ENGINE ---
+// --- SETUP ---
 const cvs = document.getElementById('canvas');
 const ctx = cvs.getContext('2d');
 let scale = 1, W, H;
-let instances = []; // Holds GameInstance objects
 
 function resize() {
     W = cvs.width = window.innerWidth;
@@ -448,132 +250,243 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-const AudioEngine = {
-    ctx: null,
-    init() { if(!this.ctx) this.ctx = new (window.AudioContext||window.webkitAudioContext)(); },
-    resume() { if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
-    suspend() { if(this.ctx && this.ctx.state === 'running') this.ctx.suspend(); },
-    play(freq, type, dur) {
-        if(!this.ctx || state.paused) return;
-        const o = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
-        o.type = type; o.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        g.gain.setValueAtTime(0.1, this.ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime+dur);
-        o.connect(g); g.connect(this.ctx.destination);
-        o.start(); o.stop(this.ctx.currentTime+dur);
-    },
-    crash() { this.play(100, 'sawtooth', 0.5); },
-    collect() { this.play(600, 'sine', 0.1); },
-    launch() { this.play(200, 'triangle', 0.2); }
-};
+// --- CLASSES ---
+class Node {
+    constructor(y, isStart=false) {
+        this.y = y;
+        this.x = (Math.random() * (W - 100*scale)) + 50*scale;
+        if(isStart) this.x = W/2;
+        this.r = (isStart ? 30 : 22 + Math.random() * 15) * scale;
+        this.visited = isStart;
+        this.type = (!isStart && Math.random() < 0.1) ? 'gold' : 'normal';
+    }
+    draw() {
+        let color = '#00f0ff';
+        // Biome Color Logic Restored
+        if(state.score > 5000) color = '#ff3333';
+        else if(state.score > 2000) color = '#bd00ff';
+        else if(state.score > 1000) color = '#00ffaa';
+        if(this.type === 'gold') color = '#f1c40f';
 
-function startGame(mode) {
+        ctx.strokeStyle = color;
+        ctx.shadowBlur = 15; ctx.shadowColor = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(this.x, this.y - state.cameraY, this.r, 0, Math.PI*2); ctx.stroke();
+        
+        ctx.beginPath(); ctx.arc(this.x, this.y - state.cameraY, this.r * 0.3, 0, Math.PI*2);
+        ctx.fillStyle = this.visited ? '#fff' : color;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+}
+
+class Player {
+    constructor(node) {
+        this.node = node;
+        this.ship = CONFIG.ships.find(s => s.id === state.equipped) || CONFIG.ships[0];
+        this.lives = this.ship.lives;
+        this.angle = 0;
+        this.dist = 85 * scale;
+        this.x = node.x; this.y = node.y;
+        this.state = 'orbit';
+        this.vel = {x:0, y:0};
+        this.trail = [];
+    }
+    update() {
+        if(state.active && !state.paused) {
+            let trailColor = '#fff';
+            if(this.ship.type === 'rainbow') trailColor = `hsl(${(Date.now()/5)%360}, 100%, 50%)`;
+            this.trail.push({x:this.x, y:this.y, alpha:1, color: trailColor});
+        }
+        if(this.trail.length > 15) this.trail.shift();
+
+        if (this.state === 'orbit') {
+            // Difficulty Progression Restored
+            let rotationSpeed = (0.04 + (state.difficulty * 0.005)) * this.ship.speed;
+            this.angle += rotationSpeed * state.timeScale;
+            this.x = this.node.x + Math.cos(this.angle) * this.dist;
+            this.y = this.node.y + Math.sin(this.angle) * this.dist;
+        } else {
+            this.x += this.vel.x * state.timeScale;
+            this.y += this.vel.y * state.timeScale;
+            this.vel.y += 0.15 * scale * state.timeScale; // Gravity
+        }
+    }
+    draw() {
+        this.trail.forEach(t => {
+            t.alpha -= 0.08;
+            ctx.fillStyle = t.color === '#fff' ? `rgba(255, 255, 255, ${Math.max(0,t.alpha)})` : t.color;
+            ctx.fillRect(t.x, t.y - state.cameraY, 3*scale, 3*scale);
+        });
+
+        ctx.save();
+        ctx.translate(this.x, this.y - state.cameraY);
+        ctx.rotate(this.state === 'drift' ? Math.atan2(this.vel.y, this.vel.x) : this.angle + Math.PI/2);
+        
+        ctx.fillStyle = this.ship.color;
+        
+        // Phantom Glow Outline Fix
+        if(this.ship.type === 'ghost') {
+            ctx.shadowBlur = 10; ctx.shadowColor = '#fff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+        } else {
+            ctx.shadowBlur = 15; ctx.shadowColor = this.ship.color;
+        }
+        
+        ctx.beginPath();
+        ctx.moveTo(12*scale, 0); ctx.lineTo(-10*scale, 8*scale); ctx.lineTo(-10*scale, -8*scale); ctx.fill();
+        if(this.ship.type === 'ghost') ctx.stroke();
+        ctx.restore();
+    }
+}
+
+let nodes = [], player;
+
+function startGame() {
     AudioEngine.init(); AudioEngine.resume();
-    gameMode = mode;
-    state.paused = false;
-    instances = [];
+    state.active = true; state.paused = false;
+    state.score = 0; state.combo = 0;
+    state.difficulty = 0; state.cameraY = 0;
+    state.timeScale = 1;
     
+    document.body.className = ''; // Reset Biome
+    document.getElementById('pauseBtn').style.display = 'block';
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     
-    if(mode === 'solo') {
-        instances.push(new GameInstance(1, 0, H));
-        document.getElementById('ui-layer').style.display = 'block';
-        document.getElementById('duel-layer').style.display = 'none';
-        document.getElementById('pauseBtn').style.display = 'block';
-    } else {
-        // Duel Mode: Split vertically
-        const halfH = H / 2;
-        instances.push(new GameInstance(1, 0, halfH));       // Top Player (P1)
-        instances.push(new GameInstance(2, halfH, halfH));   // Bottom Player (P2)
-        document.getElementById('ui-layer').style.display = 'none';
-        document.getElementById('duel-layer').style.display = 'block';
-        document.getElementById('pauseBtn').style.display = 'none'; // No pause in duel yet
-    }
+    nodes = [new Node(H - 250, true)];
+    spawnNodes();
+    player = new Player(nodes[0]);
     
+    updateHUD();
     if(state.animId) cancelAnimationFrame(state.animId);
     loop();
 }
 
-function loop() {
-    if(state.paused) return;
-    state.animId = requestAnimationFrame(loop);
-    ctx.clearRect(0,0,W,H);
-    
-    // Update & Draw Instances
-    instances.forEach(inst => {
-        inst.update();
-        inst.draw(ctx);
-    });
-
-    // Update HUDs
-    if(gameMode === 'solo') {
-        const p1 = instances[0];
-        document.getElementById('scoreVal').innerText = Math.floor(p1.score);
-        document.getElementById('coinNum').innerText = state.coins;
-        document.getElementById('bestVal').innerText = "BEST: " + state.highScore;
-        const comboEl = document.getElementById('comboText');
-        comboEl.style.opacity = p1.combo > 1 ? 1 : 0;
-        comboEl.innerText = "COMBO x" + p1.combo;
-    } else {
-        document.getElementById('dScore1').innerText = Math.floor(instances[0].score);
-        document.getElementById('dScore2').innerText = Math.floor(instances[1].score);
+function spawnNodes() {
+    while (nodes[nodes.length-1].y > state.cameraY - H) { 
+        const last = nodes[nodes.length-1];
+        const gap = (140 + (state.difficulty * 2) + Math.random() * 80) * scale;
+        nodes.push(new Node(last.y - gap));
     }
+    if(nodes.length > 20 && nodes[0].y > state.cameraY + H + 200) nodes.shift();
 }
 
-function checkDuelWin() {
-    // If P1 dead -> P2 Wins, If P2 dead -> P1 Wins
-    const p1 = instances[0];
-    const p2 = instances[1];
+function gameOver() {
+    state.active = false;
+    AudioEngine.crash();
+    document.getElementById('pauseBtn').style.display = 'none';
     
-    if(!p1.active || !p2.active) {
-        state.paused = true; // Stop loop
-        document.getElementById('overScreen').classList.remove('hidden');
-        const title = document.getElementById('overTitle');
-        const desc = document.getElementById('overDesc');
-        
-        if(!p1.active) {
-            title.innerText = "PLAYER 2 WINS!";
-            title.style.color = '#ff0055';
-            desc.innerText = "Red Supremacy";
-        } else {
-            title.innerText = "PLAYER 1 WINS!";
-            title.style.color = '#00f0ff';
-            desc.innerText = "Blue Dominance";
-        }
-    }
-}
-
-function gameOverSolo(score) {
-    state.paused = true;
-    const earned = Math.floor(score / 10);
+    const earned = Math.floor(state.score / 10);
     state.coins += earned;
-    if(score > state.highScore) {
-        state.highScore = score;
+    if(state.score > state.highScore) {
+        state.highScore = state.score;
         localStorage.setItem('jx_best', state.highScore);
     }
     localStorage.setItem('jx_coins', state.coins);
     
-    document.getElementById('overTitle').innerText = "SYSTEM FAILURE";
-    document.getElementById('overTitle').style.color = 'var(--secondary)';
-    document.getElementById('overDesc').innerText = "SCORE: " + Math.floor(score);
+    document.getElementById('finalScore').innerText = Math.floor(state.score);
+    document.getElementById('finalCoins').innerText = earned;
     document.getElementById('overScreen').classList.remove('hidden');
+    document.body.classList.remove('hyper-mode');
+}
+
+function loop() {
+    if(!state.active || state.paused) return;
+    state.animId = requestAnimationFrame(loop);
+    
+    // PROGRESSIVE DIFFICULTY
+    if(state.difficulty < 10) state.difficulty = Math.min(10, state.score / 500); 
+
+    player.update();
+    const targetY = player.y - H * 0.65;
+    state.cameraY += (targetY - state.cameraY) * 0.1;
+    
+    // BIOME CHANGE LOGIC
+    if(state.score > 5000) document.body.className = 'biome-inferno';
+    else if(state.score > 2000) document.body.className = 'biome-void';
+    else if(state.score > 1000) document.body.className = 'biome-cyber';
+
+    const warn = document.getElementById('speedWarning');
+    if(state.difficulty > 8) warn.style.opacity = 1; else warn.style.opacity = 0;
+    
+    // SHAKE
+    let sx=0, sy=0;
+    if(state.shake > 0) {
+        sx = (Math.random()-0.5)*state.shake; sy = (Math.random()-0.5)*state.shake;
+        state.shake *= 0.9;
+    }
+    
+    if(player.state === 'drift') {
+        let hit = false;
+        nodes.forEach(node => {
+            const dx = player.x - node.x; const dy = player.y - node.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist < node.r + 35*scale && node !== player.node) {
+                hit = true;
+                player.state = 'orbit'; player.node = node;
+                player.angle = Math.atan2(dy, dx);
+                
+                if(!node.visited) {
+                    node.visited = true; state.combo++;
+                    if(node.type === 'gold') { state.coins += 50; AudioEngine.coin(); }
+                    
+                    let points = (100 + (state.combo * 10));
+                    if(player.ship.type === 'speed') points *= 1.2;
+                    
+                    state.score += points;
+                    AudioEngine.collect();
+                    
+                    if(state.combo > 5) { state.shake = 5; }
+                }
+                spawnNodes(); 
+            }
+        });
+        
+        // BUG FIX: INVINCIBILITY
+        // Check if player is strictly below visible screen + buffer
+        if(!hit && (player.x < -50 || player.x > W+50 || player.y - state.cameraY > H + 150)) {
+            player.lives--;
+            if(player.lives <= 0) gameOver();
+            else {
+                player.vel.y = -15 * scale;
+                state.shake = 20;
+                AudioEngine.crash();
+            }
+        }
+    }
+    
+    ctx.clearRect(0,0,W,H);
+    ctx.save(); ctx.translate(sx, sy);
+    nodes.forEach(n => { if(n.y - state.cameraY < H+100 && n.y - state.cameraY > -H) n.draw(); });
+    player.draw();
+    ctx.restore();
+    updateHUD();
+}
+
+function updateHUD() {
+    document.getElementById('scoreVal').innerText = Math.floor(state.score);
+    document.getElementById('coinNum').innerText = state.coins;
+    document.getElementById('bestVal').innerText = "BEST: " + state.highScore;
+    const comboEl = document.getElementById('comboText');
+    if(state.combo > 1) {
+        comboEl.innerText = "COMBO x" + state.combo; comboEl.style.opacity = 1;
+        comboEl.style.transform = `scale(${1 + state.combo*0.1})`;
+    } else { comboEl.style.opacity = 0; }
 }
 
 function handleInput(e) {
-    if(state.paused) return;
-    if(e.target.tagName === 'BUTTON') return;
-    e.preventDefault(); // Prevent scroll
+    if(state.paused || !state.active) return;
+    // CRITICAL FIX: Allow clicking buttons and garage scroll
+    if(e.target.tagName === 'BUTTON' || e.target.closest('.garage-grid') || e.target.closest('.screen')) return;
     
-    const inputY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+    if(e.type === 'touchstart') e.preventDefault(); // Prevent only on game canvas
     
-    if(gameMode === 'solo') {
-        instances[0].player.launch();
-    } else {
-        // Duel Input Logic
-        // Top half (P1) is y < H/2
-        if(inputY < H/2) instances[0].player.launch();
-        else instances[1].player.launch();
+    if(player.state === 'orbit') {
+        player.state = 'drift';
+        const speed = (16 + (state.difficulty * 0.5)) * player.ship.speed * scale;
+        player.vel.x = -Math.sin(player.angle) * speed;
+        player.vel.y = Math.cos(player.angle) * speed;
+        AudioEngine.launch();
     }
 }
 window.addEventListener('touchstart', handleInput, {passive: false});
@@ -582,21 +495,17 @@ window.addEventListener('mousedown', handleInput);
 function togglePause() {
     state.paused = !state.paused;
     if(state.paused) {
-        AudioEngine.suspend();
+        AudioEngine.ctx.suspend();
         document.getElementById('pauseScreen').classList.remove('hidden');
     } else {
-        AudioEngine.resume();
+        AudioEngine.ctx.resume();
         document.getElementById('pauseScreen').classList.add('hidden');
         loop();
     }
 }
 
-function restartLastMode() {
-    startGame(gameMode);
-}
-
 function quitGame() {
-    state.paused = false; // Reset pause
+    state.active = false; state.paused = false;
     document.getElementById('pauseScreen').classList.add('hidden');
     showMenu();
 }
@@ -604,33 +513,66 @@ function quitGame() {
 function showMenu() {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     document.getElementById('menuScreen').classList.remove('hidden');
-    document.getElementById('ui-layer').style.display = 'none';
-    document.getElementById('duel-layer').style.display = 'none';
+    document.getElementById('pauseBtn').style.display = 'none';
 }
 
-// Basic Garage/Share Functions (Simplified for brevity)
 function openGarage() {
     document.getElementById('menuScreen').classList.add('hidden');
     document.getElementById('garageScreen').classList.remove('hidden');
     document.getElementById('garageCoins').innerText = state.coins;
+    renderGarage();
+}
+
+function renderGarage() {
     const grid = document.getElementById('shipGrid');
     grid.innerHTML = '';
     CONFIG.ships.forEach(ship => {
         const owned = state.inventory.includes(ship.id);
         const div = document.createElement('div');
         div.className = `ship-card ${state.equipped === ship.id ? 'selected' : ''}`;
-        div.innerHTML = `<div class="ship-icon" style="background:${ship.color}; box-shadow:0 0 10px ${ship.color}"></div><div class="ship-name">${ship.name}</div>${owned ? 'OWNED' : ship.cost+' 🪙'}`;
-        div.onclick = () => {
-            if(owned) { state.equipped = ship.id; localStorage.setItem('jx_equip', ship.id); openGarage(); }
-            else if(state.coins >= ship.cost) { state.coins-=ship.cost; state.inventory.push(ship.id); localStorage.setItem('jx_coins', state.coins); localStorage.setItem('jx_inv', JSON.stringify(state.inventory)); openGarage(); }
+        div.innerHTML = `
+            <div class="ship-icon" style="background:${ship.color}; box-shadow:0 0 10px ${ship.color}; ${ship.id==='phantom'?'border:2px solid #fff':''}"></div>
+            <div class="ship-name">${ship.name}</div>
+            ${owned ? '<span style="color:#aaa; font-size:0.7rem">OWNED</span>' : `<span class="cost">${ship.cost} 🪙</span>`}
+        `;
+        div.onclick = (e) => {
+            e.stopPropagation(); // BUG FIX: Prevent game launch
+            if(owned) {
+                state.equipped = ship.id;
+                localStorage.setItem('jx_equip', ship.id);
+                renderGarage();
+            } else if(state.coins >= ship.cost) {
+                state.coins -= ship.cost;
+                state.inventory.push(ship.id);
+                localStorage.setItem('jx_coins', state.coins);
+                localStorage.setItem('jx_inv', JSON.stringify(state.inventory));
+                renderGarage();
+            } else {
+                div.style.borderColor = 'red';
+                setTimeout(()=>div.style.borderColor='#333', 300);
+            }
         };
         grid.appendChild(div);
     });
 }
-function closeGarage() { document.getElementById('garageScreen').classList.add('hidden'); document.getElementById('menuScreen').classList.remove('hidden'); }
-function shareScore() { 
-    if(navigator.share) navigator.share({title:'Aether Drift', text:'Beat my score!'}); 
-    else alert('Link copied!');
+
+function closeGarage() {
+    document.getElementById('garageScreen').classList.add('hidden');
+    document.getElementById('menuScreen').classList.remove('hidden');
+}
+
+// REAL SHARE API FIX
+async function shareScore() {
+    const text = `I reached ${Math.floor(state.score)}m in Aether Drift! Beat me? #JandixGames`;
+    if (navigator.share) {
+        try { await navigator.share({ title: 'Aether Drift', text: text }); } 
+        catch (err) { console.log('Share closed'); }
+    } else {
+        // Fallback
+        navigator.clipboard.writeText(text);
+        const t = document.getElementById('toast');
+        t.style.opacity = 1; setTimeout(()=>t.style.opacity=0, 2000);
+    }
 }
 
 window.onload = () => {
